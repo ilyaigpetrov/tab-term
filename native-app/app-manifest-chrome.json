@@ -1,0 +1,7 @@
+{
+  "name": "hello_world_host",
+  "description": "Example host for native messaging",
+  "path": "/home/ilyaigpetrov/Projects/gav/native-app/builds/hello.out",
+  "type": "stdio",
+  "allowed_origins": [ "chrome-extension://dhacomcoedleenlbfgplmcpchglclmgm/" ]
+}

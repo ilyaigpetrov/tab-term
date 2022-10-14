@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "hello-world-extension",
+    "description": "Name of the extension."
+  },
+  "extensionDescription": {
+    "message": "TODO:",
+    "description": "Description of the extension."
+  },
+  "donate": {
+    "message": "Donate ❤",
+    "description": ""
+  }
+}
