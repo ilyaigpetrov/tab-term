@@ -16,8 +16,9 @@ long int messageToHostLimit = 4294967296; // 2**32 = 4 GB
 
 void main() {
 
-  int myPipe[2];
-  if (pipe(myPipe) == -1) {
+  int pipeToParent[2];
+  int pipeToChild[2];
+  if (pipe(pipeToParent) == -1 || pipe(pipeToChild) == -1) {
     perror("pipe");
     exit(1);
   }
@@ -28,40 +29,86 @@ void main() {
     exit(1);
   } else if (pid == 0) {
     // Child.
-    while ((dup2(myPipe[1], STDOUT_FILENO) == -1) && (errno == EINTR)) {}
-    close(myPipe[1]);
-    close(myPipe[0]);
-    execlp("node", "/usr/bin/node", "--version", (char*)NULL);
+    while ((dup2(pipeToParent[1], STDOUT_FILENO) == -1) && (errno == EINTR)) {}
+    close(pipeToParent[1]);
+    close(pipeToParent[0]);
+    while ((dup2(STDIN_FILENO, pipeToChild[0]) == -1) && (errno == EINTR)) {}
+    close(pipeToChild[1]);
+    close(pipeToChild[0]);
+    execlp("node", "/usr/bin/node", (char*)NULL);
     perror("execlp");
     _exit(1);
   }
   // Parent.
-  close(myPipe[1]);
+  //close(pipeToParent[1]);
+  //close(pipeToChild[0]);
+  enum {BUF_SIZE = 4096};
+  char buffer[BUF_SIZE];
 
-  char buffer[4096];
-  while (1) {
-    ssize_t count = read(myPipe[0], buffer, sizeof(buffer));
+  int IfToContinue = 1;
+  int IfToBreak = 0;
+
+  int countToState(ssize_t count) {
     if (count == -1) {
       if (errno == EINTR) {
-        continue;
+        return IfToContinue;
       } else {
         perror("read");
         exit(1);
       }
     } else if (count == 0) {
-      break;
-    } else {
-      long int quotedLen = count + 2;
-      char quotedMessage[quotedLen];
-      buffer[count] = '\0';
-      sprintf(quotedMessage, "\"%s\"", buffer);
-      fwrite(&quotedLen, sizeof(quotedLen), 1, stdout);
-      fwrite(quotedMessage, 1, quotedLen, stdout);
-      //write(STDOUT_FILENO, quotedMessage, quotedLen);
-      fflush(stdout);
+      return IfToBreak;
     }
+    return IfToContinue;
   }
-  close(myPipe[0]);
+
+
+  bool writeStdOut() {
+    char buffer[BUF_SIZE];
+
+    ssize_t count = read(pipeToParent[0], buffer, sizeof(buffer));
+    //printf("Read count=%ld\n", count);
+    int state = countToState(count);
+    if (state == IfToBreak) {
+      return state;
+    }
+    int quotedLen = count + 2; // +2 double quotes.
+    char quotedMessage[quotedLen];
+    sprintf(quotedMessage, "\"%s\"", buffer);
+    write(STDOUT_FILENO, &quotedLen, sizeof(quotedLen));
+    write(STDOUT_FILENO, quotedMessage, quotedLen);
+    return IfToContinue;
+  }
+
+  bool readStdIn() {
+    char buffer[BUF_SIZE];
+
+    ssize_t count = read(STDIN_FILENO, buffer, sizeof(buffer));
+    //printf("Read count=%ld\n", count);
+    int state = countToState(count);
+    if (state == IfToBreak) {
+      return state;
+    }
+    // Remove quotes.
+    buffer[count - 1] = '\0';
+    char* msg = buffer + 1 + 4;
+    printf("Write to child: <%s>\n", msg);
+    write(pipeToChild[1], msg, sizeof(msg));
+    return IfToContinue;
+  }
+
+  bool ifContinue1 = true;
+  bool ifContinue2 = true;
+  while (ifContinue1 || ifContinue2) {
+    //puts("Cycle iteration stared.");
+    ifContinue1 = writeStdOut();
+    //printf("ifContinue1=%d", ifContinue1);
+    ifContinue2 = readStdIn();
+    //printf("ifContinue2=%d", ifContinue2);
+  }
+
+  close(pipeToParent[0]);
+  close(pipeToChild[0]);
   wait(0);
 
 }
