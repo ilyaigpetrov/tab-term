@@ -12,7 +12,7 @@ enum {
 
 ssize_t readInput(char *buffer) {
   ssize_t count = read(STDIN_FILENO, buffer, sizeof(buffer));
-  printf("COUNT IS:(%zd)\nBUFFER IS:(%s)\n", count, buffer);
+  //printf("COUNT IS:(%zd)\n", count);
   if (count == -1) {
     if (errno == EINTR) {
       return count;
@@ -23,7 +23,8 @@ ssize_t readInput(char *buffer) {
   } else if (count == 0) { // Reached the end.
     return count;
   }
-  buffer[count - 1] = '\0';
+  buffer[count] = '\0';
+  //printf("BUFFER IS:(%s)\n", buffer);
   return count;
 };
 
@@ -33,10 +34,21 @@ int main() {
   ssize_t count = readInput(pbuf);
   if (count > 0) {
     pbuf = pbuf + 4 + 1;
-    printf("PBUF:%s:", pbuf);
+    //printf("PBUF:%s:", pbuf);
+    //printf("SIZEOF:%ld:", sizeof(pbuf));
+    //printf("STRLEN:%ld:", strlen(pbuf));
     do {
-      write(STDOUT_FILENO, pbuf, sizeof(pbuf));
-    } while (readInput(buffer));
+      if (pbuf[strlen(pbuf) - 1] == '"') {
+        int nextInt = getc(stdin);
+        if (nextInt == EOF) {
+          pbuf[strlen(pbuf) - 1] = '\0';
+        } else {
+          ungetc(nextInt, stdin);
+        }
+      }
+      write(STDOUT_FILENO, pbuf, strlen(pbuf));
+      count = readInput(pbuf);      
+    } while (count);
   }
   // E.g. 0000 0000 has 2**32 of combinations or 4 bytes/chars.
   return 0;

@@ -35,7 +35,7 @@ void main() {
     while ((dup2(STDIN_FILENO, pipeToChild[0]) == -1) && (errno == EINTR)) {}
     close(pipeToChild[1]);
     close(pipeToChild[0]);
-    execlp("node", "/usr/bin/node", (char*)NULL);
+    execlp("uname", "/usr/bin/uname", (char*)NULL);
     perror("execlp");
     _exit(1);
   }
@@ -70,7 +70,7 @@ void main() {
     //printf("Read count=%ld\n", count);
     int state = countToState(count);
     if (state == IfToBreak) {
-      return state;
+      return IfToBreak;
     }
     int quotedLen = count + 2; // +2 double quotes.
     char quotedMessage[quotedLen];
@@ -97,13 +97,13 @@ void main() {
     return IfToContinue;
   }
 
-  bool ifContinue1 = true;
-  bool ifContinue2 = true;
+  int ifContinue1 = true;
+  int ifContinue2 = true;
   while (ifContinue1 || ifContinue2) {
     //puts("Cycle iteration stared.");
     ifContinue1 = writeStdOut();
     //printf("ifContinue1=%d", ifContinue1);
-    ifContinue2 = readStdIn();
+    //ifContinue2 = readStdIn();
     //printf("ifContinue2=%d", ifContinue2);
   }
 
